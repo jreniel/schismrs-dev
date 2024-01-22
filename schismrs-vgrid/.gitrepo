@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:jreniel/schismrs-vgrid.git
+	branch = main
+	commit = baf735ac8ca72a21501a3a52c5a8a2665674176e
+	parent = 6c456d21479c83c4491c0bf3d5a47919a36f75fd
+	method = merge
+	cmdver = 0.4.5
