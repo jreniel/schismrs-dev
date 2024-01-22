@@ -1,0 +1,6 @@
+[submodule "schismrs-hgrid"]
+	path = schismrs-hgrid
+	url = https://github.com/jreniel/schismrs-hgrid.git
+[submodule "schismrs-vgrid"]
+	path = schismrs-vgrid
+	url = https://github.com/jreniel/schismrs-vgrid.git
