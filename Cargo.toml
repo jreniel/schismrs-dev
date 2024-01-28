@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "schismrs-vgrid",
-    "schismrs-hgrid",
+    "src/schismrs-vgrid",
+    "src/schismrs-hgrid",
     # "schismrs-web",
 ]

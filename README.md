@@ -1,8 +1,8 @@
 # schismrs -- Same as before but now in Rust.
 
-## [schismrs-hgrid](schismrs-hgrid/README.md)
+## [schismrs-hgrid](src/schismrs-hgrid)
 
-## [schismrs-vgrid](schismrs-vgrid/README.md)
+## [schismrs-vgrid](src/schismrs-vgrid)
 
 ### License
 
