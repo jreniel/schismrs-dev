@@ -1,8 +1,13 @@
-# schismrs -- Same as before but now in Rust.
+# schismrs
 
-## [schismrs-hgrid](src/schismrs-hgrid)
+##### Same as before but now in Rust.
 
-## [schismrs-vgrid](src/schismrs-vgrid)
+---
+
+## Crates
+
+- [schismrs-hgrid](src/schismrs-hgrid)
+- [schismrs-vgrid](src/schismrs-vgrid)
 
 ### License
 
