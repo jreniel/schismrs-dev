@@ -3,5 +3,5 @@ resolver = "2"
 members = [
     "schismrs-vgrid",
     "schismrs-hgrid",
-    "schismrs-web",
+    # "schismrs-web",
 ]
