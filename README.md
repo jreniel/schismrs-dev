@@ -6,8 +6,8 @@
 
 ## Crates
 
-- [schismrs-hgrid](src/schismrs-hgrid)
-- [schismrs-vgrid](src/schismrs-vgrid)
+- [schismrs-hgrid](src/hgrid)
+- [schismrs-vgrid](src/vgrid)
 
 ### License
 
