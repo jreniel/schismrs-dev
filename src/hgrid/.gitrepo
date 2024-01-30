@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:jreniel/schismrs-hgrid.git
 	branch = main
-	commit = 0905035c40589a3f6931f01ef37097b09018e9c0
-	parent = e2493a0bdf8034b4c31de9fdbfdaefdce1a54473
+	commit = f5e1606fa5c11299755dc4a05401f63b6977e9aa
+	parent = 74fad35fcb072c7f36b3833edc4f37ad81ca1f4a
 	method = merge
 	cmdver = 0.4.5
