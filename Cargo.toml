@@ -3,5 +3,5 @@ resolver = "2"
 members = [
     "src/vgrid",
     "src/hgrid",
-    # "schismrs-web",
+    "src/storm_events",
 ]
