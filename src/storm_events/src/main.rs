@@ -24,7 +24,7 @@ fn entrypoint() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     let storm_event = StormEventBuilder::default()
         // .file_deck(ATCFFileDeck::BEST)
-        .storm_id(cli.storm_id)
+        .storm_id(&cli.storm_id)
         .build()?;
     dbg!(storm_event);
     Ok(())
