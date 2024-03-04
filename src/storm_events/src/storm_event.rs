@@ -40,48 +40,95 @@ impl<'a> StormEventBuilder<'a> {
         self
     }
 
+    pub fn file_deck(&mut self, file_deck: &'a ATCFFileDeck) -> &mut Self {
+        self.file_deck = Some(file_deck);
+        self
+    }
     fn get_track_from_storm_id(&self, storm_id: &str) -> Result<DataFrame, StormEventBuilderError> {
-        let inventory = Self::get_nhc_storm_inventory()?;
-        if Regex::new(r"^[a-zA-Z]{2}\d{6}$")
-            .unwrap()
-            .is_match(&storm_id)
-        {
-            // this branch handles storm_id as a literal nhc_code
-            let track = self.get_track_from_nhc_code(&storm_id, &inventory)?;
-            Ok(track)
-        } else if Regex::new(r"^[a-zA-Z]*\d{4}$").unwrap().is_match(&storm_id) {
-            // this branch handles NameYear format
-            let storm_name = &storm_id[..storm_id.len() - 4];
-            let year = Year(storm_id[storm_id.len() - 4..].parse::<i64>().map_err(|_| {
-                StormEventBuilderError::NoMatchingPatternForStormID(storm_id.to_string())
-            })?);
-            let track = self.get_track_from_storm_name_and_year(&storm_name, &year, &inventory)?;
-            Ok(track)
-        } else {
-            Err(StormEventBuilderError::NoMatchingPatternForStormID(
+        let nhc_code = match (
+            Regex::new(r"^[a-zA-Z]{2}\d{6}$")
+                .unwrap()
+                .is_match(&storm_id),
+            Regex::new(r"^[a-zA-Z]*\d{4}$").unwrap().is_match(&storm_id),
+        ) {
+            (true, _) => Ok(storm_id.to_string()),
+            (_, true) => {
+                // this branch handles NameYear format
+                let storm_name = &storm_id[..storm_id.len() - 4];
+                let year = Year(storm_id[storm_id.len() - 4..].parse::<i64>().map_err(|_| {
+                    StormEventBuilderError::NoMatchingPatternForStormID(storm_id.to_string())
+                })?);
+                let inventory = Self::get_nhc_storm_inventory()?;
+                Self::get_nhc_code_from_storm_name_and_year(&inventory, storm_name, &year)
+            }
+            (_, _) => Err(StormEventBuilderError::NoMatchingPatternForStormID(
                 storm_id.to_string(),
-            ))
-        }
+            )),
+        }?;
+        let track = self.get_track_from_nhc_code(&nhc_code)?;
+        dbg!(track);
+        unimplemented!();
     }
 
-    fn get_track_from_storm_name_and_year(
-        &self,
-        storm_name: &str,
-        year: &Year,
-        inventory: &DataFrame,
-    ) -> Result<DataFrame, StormEventBuilderError> {
-        let nhc_code = Self::get_nhc_code_from_storm_name_and_year(&inventory, &storm_name, &year)?;
-        let track = self.get_track_from_nhc_code(&nhc_code, inventory)?;
-        Ok(track)
-    }
-    fn get_track_from_nhc_code(
-        &self,
-        nhc_code: &str,
-        inventory: &DataFrame,
-    ) -> Result<DataFrame, StormEventBuilderError> {
-        let atcf_url = self.get_atcf_url_from_nhc_code(nhc_code, inventory)?;
-        dbg!(atcf_url);
+    fn get_track_from_nhc_code(&self, nhc_code: &str) -> Result<DataFrame, StormEventBuilderError> {
+        let storm_year = Year(nhc_code[nhc_code.len() - 4..].parse::<i64>().map_err(|_| {
+            StormEventBuilderError::NoMatchingPatternForNhcCode(nhc_code.to_string())
+        })?);
+        let current_year = Year(Utc::now().year() as i64);
+        let url = "ftp://ftp.nhc.noaa.gov/atcf";
+        let file_deck = self.file_deck.ok_or_else(|| {
+            StormEventBuilderError::UninitializedFieldError("file_deck".to_string())
+        })?;
+        let suffix = match storm_year == current_year {
+            true => match file_deck {
+                ATCFFileDeck::ADVISORY => {
+                    format!("aid_public/a{}.dat.gz", nhc_code.to_lowercase()).to_string()
+                }
+                ATCFFileDeck::BEST => format!("btk/b{}.dat", nhc_code.to_lowercase()).to_string(),
+                ATCFFileDeck::FIXED => format!("fix/f{}.dat", nhc_code.to_lowercase()).to_string(),
+            },
+            false => match file_deck {
+                ATCFFileDeck::ADVISORY => format!(
+                    "archive/{}/a{}.dat.gz",
+                    storm_year.0,
+                    nhc_code.to_lowercase()
+                )
+                .to_string(),
+                ATCFFileDeck::BEST => {
+                    format!("archive/{}/b{}.dat", storm_year.0, nhc_code.to_lowercase()).to_string()
+                }
+                ATCFFileDeck::FIXED => {
+                    format!("archive/{}/f{}.dat", storm_year.0, nhc_code.to_lowercase()).to_string()
+                }
+            },
+        };
+        let url = Url::parse(&format!("{}/{}", url, suffix)).expect("unreachable");
+        dbg!(&url.to_string());
         unimplemented!();
+
+        // Ok(Url::parse(&format!(
+        //     "ftp://ftp.nhc.noaa.gov/atcf/{}/",
+        //     nhc_dir
+        // ))?)
+        // let atcf_url_prefix = self.get_atcf_prefix_from_year(&storm_year, &current_year)?;
+        // let nhc_dir = match storm_year == current_year {
+        //     true => {
+        //         let file_deck = self
+        //             .file_deck
+        //             .ok_or_else(|| StormEventBuilderError::UninitializedFileDeckError)?;
+        //         match file_deck {
+        //             ATCFFileDeck::ADVISORY => "aid_public".to_string(),
+        //             ATCFFileDeck::BEST => "btk".to_string(),
+        //             ATCFFileDeck::FIXED => "fix".to_string(),
+        //         }
+        //     }
+        //     false => {
+        //         format!("archive/{}", year.0)
+        //     }
+        // };
+        // dbg!(atcf_url_prefix);
+        // dbg!(nhc_code);
+        // unimplemented!();
         // Ok(track)
     }
 
@@ -99,24 +146,24 @@ impl<'a> StormEventBuilder<'a> {
                     .and(col("year").eq(lit(year.0))),
             )
             .collect()?;
-        dbg!(&some_coll);
-        if some_coll.height() != 1 {
+        if some_coll.height() > 1 {
             return Err(StormEventBuilderError::MultipleMatchingData {
                 storm_name: storm_name.to_owned(),
                 year: year.0,
             });
-        } else if some_coll.height() == 0 {
+        } else if some_coll.height() < 1 {
             return Err(StormEventBuilderError::NoMatchingData {
                 storm_name: storm_name.to_owned(),
                 year: year.0,
             });
         }
+
         let nhc_code_column = some_coll.column("nhc_code")?;
 
         let nhc_code_value = nhc_code_column.get(0);
 
         let nhc_code = nhc_code_value?.to_string();
-
+        let nhc_code = nhc_code.trim_matches('\"').trim().to_string();
         Ok(nhc_code)
     }
     // fn get_storm_name_and_year_from_nhc_code(
@@ -175,53 +222,6 @@ impl<'a> StormEventBuilder<'a> {
             .expect(&format!("Unreachable: polars should've been be able to parse this. Maybe something changed at the url {}", url));
         Ok(df)
     }
-
-    fn get_atcf_prefix_from_year(&self, year: &Year) -> Result<Url, StormEventBuilderError> {
-        let current_year = Utc::now().year() as i64;
-        let nhc_dir = match year.0 == current_year {
-            true => {
-                let file_deck = self
-                    .file_deck
-                    .ok_or_else(|| StormEventBuilderError::UninitializedFileDeckError)?;
-                match file_deck {
-                    ATCFFileDeck::ADVISORY => "aid_public".to_string(),
-                    ATCFFileDeck::BEST => "btk".to_string(),
-                    ATCFFileDeck::FIXED => "fix".to_string(),
-                }
-            }
-            false => {
-                format!("archive/{}", year.0)
-            }
-        };
-
-        Ok(Url::parse(&format!(
-            "ftp://ftp.nhc.noaa.gov/atcf/{}/",
-            nhc_dir
-        ))?)
-    }
-
-    fn get_atcf_url_from_storm_name_and_year(
-        &self,
-        storm_name: &str,
-        year: &Year,
-    ) -> Result<Url, StormEventBuilderError> {
-        let atcf_prefix = self.get_atcf_prefix_from_year(&year)?;
-    }
-
-    fn get_atcf_url_from_nhc_code(
-        &self,
-        nhc_code: &str,
-        inventory: &DataFrame,
-    ) -> Result<Url, StormEventBuilderError> {
-        // let (storm_name, year) = Self::get_storm_name_and_year_from_nhc_code(inventory, nhc_code)?;
-        let year = Year(nhc_code[nhc_code.len() - 4..].parse::<i64>().map_err(|_| {
-            StormEventBuilderError::NoMatchingPatternForNhcCode(nhc_code.to_string())
-        })?);
-        let atcf_prefix = self.get_atcf_prefix_from_year(&year)?;
-
-        // let atcf_prefix = self.get_atcf_url_from_storm_name_and_year(storm_name, &year)
-        // Ok(self.get_atcf_url_from_storm_name_year(&storm_name, &year)?)
-    }
 }
 
 #[derive(Error, Debug)]
@@ -263,9 +263,8 @@ pub enum StormEventBuilderError {
     #[error("{0}")]
     MutuallyExclusiveArguments(String),
 
-    #[error("The `file_deck` field is required when requestiong realtime data.")]
-    UninitializedFileDeckError,
-
+    // #[error("The `file_deck` field is required when requestiong realtime data.")]
+    // UninitializedFileDeckError,
     #[error(transparent)]
     UrlParseError(#[from] ParseError),
     // #[error("NHCDataInventoryBuilder error: {0}")]
