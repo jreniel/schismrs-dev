@@ -9,6 +9,7 @@
 - [schismrs-hgrid](src/hgrid)
 - [schismrs-vgrid](src/vgrid)
 - [schismrs-storm-events](src/storm_events)
+- [schismrs-bctides](src/bctides)
 
 ### License
 
