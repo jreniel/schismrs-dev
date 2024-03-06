@@ -1,15 +1,16 @@
 use crate::atcf::ATCFFileDeck;
 use chrono::{Datelike, Utc};
 use datetime::Year;
+use flate2::read::GzDecoder;
 use polars::frame::DataFrame;
 use polars::prelude::*;
 use polars_lazy::prelude::*;
 use regex::Regex;
 use smartstring::alias::String as SmartString;
 use std::io::Cursor;
+use std::io::{BufRead, BufReader, Read};
 use std::sync::Arc;
 use thiserror::Error;
-use url::{ParseError, Url};
 
 #[derive(Debug)]
 pub struct StormEvent {
@@ -29,9 +30,7 @@ impl<'a> StormEventBuilder<'a> {
         let storm_id = self.storm_id.ok_or_else(|| {
             StormEventBuilderError::UninitializedFieldError("storm_id".to_string())
         })?;
-
         let track = self.get_track_from_storm_id(storm_id)?;
-
         Ok(StormEvent { track })
     }
 
@@ -51,7 +50,10 @@ impl<'a> StormEventBuilder<'a> {
                 .is_match(&storm_id),
             Regex::new(r"^[a-zA-Z]*\d{4}$").unwrap().is_match(&storm_id),
         ) {
-            (true, _) => Ok(storm_id.to_string()),
+            (true, _) => {
+                // this branch handles storm_id IS nhc_code already
+                Ok(storm_id.to_string())
+            }
             (_, true) => {
                 // this branch handles NameYear format
                 let storm_name = &storm_id[..storm_id.len() - 4];
@@ -65,9 +67,7 @@ impl<'a> StormEventBuilder<'a> {
                 storm_id.to_string(),
             )),
         }?;
-        let track = self.get_track_from_nhc_code(&nhc_code)?;
-        dbg!(track);
-        unimplemented!();
+        Ok(self.get_track_from_nhc_code(&nhc_code)?)
     }
 
     fn get_track_from_nhc_code(&self, nhc_code: &str) -> Result<DataFrame, StormEventBuilderError> {
@@ -75,7 +75,7 @@ impl<'a> StormEventBuilder<'a> {
             StormEventBuilderError::NoMatchingPatternForNhcCode(nhc_code.to_string())
         })?);
         let current_year = Year(Utc::now().year() as i64);
-        let url = "ftp://ftp.nhc.noaa.gov/atcf";
+        let url = "https://ftp.nhc.noaa.gov/atcf";
         let file_deck = self.file_deck.ok_or_else(|| {
             StormEventBuilderError::UninitializedFieldError("file_deck".to_string())
         })?;
@@ -94,42 +94,141 @@ impl<'a> StormEventBuilder<'a> {
                     nhc_code.to_lowercase()
                 )
                 .to_string(),
-                ATCFFileDeck::BEST => {
-                    format!("archive/{}/b{}.dat", storm_year.0, nhc_code.to_lowercase()).to_string()
-                }
-                ATCFFileDeck::FIXED => {
-                    format!("archive/{}/f{}.dat", storm_year.0, nhc_code.to_lowercase()).to_string()
-                }
+                ATCFFileDeck::BEST => format!(
+                    "archive/{}/b{}.dat.gz",
+                    storm_year.0,
+                    nhc_code.to_lowercase()
+                )
+                .to_string(),
+                ATCFFileDeck::FIXED => format!(
+                    "archive/{}/f{}.dat.gz",
+                    storm_year.0,
+                    nhc_code.to_lowercase()
+                )
+                .to_string(),
             },
         };
-        let url = Url::parse(&format!("{}/{}", url, suffix)).expect("unreachable");
-        dbg!(&url.to_string());
-        unimplemented!();
+        let url = format!("{}/{}", url, suffix);
+        let response = reqwest::blocking::get(&url)?.bytes()?;
+        let mut basin = Vec::new();
+        let mut cy = Vec::new();
+        let mut yyyymmddhh = Vec::new();
+        let mut technum_min = Vec::new();
+        let mut tech = Vec::new();
+        let mut tau = Vec::new();
+        let mut latn_s = Vec::new();
+        let mut lone_w = Vec::new();
+        let mut vmax = Vec::new();
+        let mut mslp = Vec::new();
+        let mut ty = Vec::new();
+        let mut rad = Vec::new();
+        let mut windcode = Vec::new();
+        let mut rad1 = Vec::new();
+        let mut rad2 = Vec::new();
+        let mut rad3 = Vec::new();
+        let mut rad4 = Vec::new();
+        let mut pouter = Vec::new();
+        let mut router = Vec::new();
+        let mut rmw = Vec::new();
+        let mut gusts = Vec::new();
+        let mut eye = Vec::new();
+        let mut subregion = Vec::new();
+        let mut maxseas = Vec::new();
+        let mut initials = Vec::new();
+        let mut dir = Vec::new();
+        let mut speed = Vec::new();
+        let mut stormname = Vec::new();
+        let mut depth = Vec::new();
+        let mut seas = Vec::new();
+        let mut seascode = Vec::new();
+        let mut seas1 = Vec::new();
+        let mut seas2 = Vec::new();
+        let mut seas3 = Vec::new();
+        let mut seas4 = Vec::new();
+        let reader: Box<dyn Read> = if url.ends_with("gz") {
+            Box::new(GzDecoder::new(response.as_ref()))
+        } else {
+            Box::new(response.as_ref())
+        };
 
-        // Ok(Url::parse(&format!(
-        //     "ftp://ftp.nhc.noaa.gov/atcf/{}/",
-        //     nhc_dir
-        // ))?)
-        // let atcf_url_prefix = self.get_atcf_prefix_from_year(&storm_year, &current_year)?;
-        // let nhc_dir = match storm_year == current_year {
-        //     true => {
-        //         let file_deck = self
-        //             .file_deck
-        //             .ok_or_else(|| StormEventBuilderError::UninitializedFileDeckError)?;
-        //         match file_deck {
-        //             ATCFFileDeck::ADVISORY => "aid_public".to_string(),
-        //             ATCFFileDeck::BEST => "btk".to_string(),
-        //             ATCFFileDeck::FIXED => "fix".to_string(),
-        //         }
-        //     }
-        //     false => {
-        //         format!("archive/{}", year.0)
-        //     }
-        // };
-        // dbg!(atcf_url_prefix);
-        // dbg!(nhc_code);
-        // unimplemented!();
-        // Ok(track)
+        let buf_reader = BufReader::new(reader);
+        for line in buf_reader.lines() {
+            let line = line.unwrap();
+            let parts: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
+            basin.push(parts.get(0).unwrap_or(&"").to_string());
+            cy.push(parts.get(1).unwrap_or(&"").to_string());
+            yyyymmddhh.push(parts.get(2).unwrap_or(&"").to_string());
+            technum_min.push(parts.get(3).unwrap_or(&"").to_string());
+            tech.push(parts.get(4).unwrap_or(&"").to_string());
+            tau.push(parts.get(5).unwrap_or(&"").to_string());
+            latn_s.push(parts.get(6).unwrap_or(&"").to_string());
+            lone_w.push(parts.get(7).unwrap_or(&"").to_string());
+            vmax.push(parts.get(8).unwrap_or(&"").to_string());
+            mslp.push(parts.get(9).unwrap_or(&"").to_string());
+            ty.push(parts.get(10).unwrap_or(&"").to_string());
+            rad.push(parts.get(11).unwrap_or(&"").to_string());
+            windcode.push(parts.get(12).unwrap_or(&"").to_string());
+            rad1.push(parts.get(13).unwrap_or(&"").to_string());
+            rad2.push(parts.get(14).unwrap_or(&"").to_string());
+            rad3.push(parts.get(15).unwrap_or(&"").to_string());
+            rad4.push(parts.get(16).unwrap_or(&"").to_string());
+            pouter.push(parts.get(17).unwrap_or(&"").to_string());
+            router.push(parts.get(18).unwrap_or(&"").to_string());
+            rmw.push(parts.get(19).unwrap_or(&"").to_string());
+            gusts.push(parts.get(20).unwrap_or(&"").to_string());
+            eye.push(parts.get(21).unwrap_or(&"").to_string());
+            subregion.push(parts.get(22).unwrap_or(&"").to_string());
+            maxseas.push(parts.get(23).unwrap_or(&"").to_string());
+            initials.push(parts.get(24).unwrap_or(&"").to_string());
+            dir.push(parts.get(25).unwrap_or(&"").to_string());
+            speed.push(parts.get(26).unwrap_or(&"").to_string());
+            stormname.push(parts.get(27).unwrap_or(&"").to_string());
+            depth.push(parts.get(28).unwrap_or(&"").to_string());
+            seas.push(parts.get(29).unwrap_or(&"").to_string());
+            seascode.push(parts.get(30).unwrap_or(&"").to_string());
+            seas1.push(parts.get(31).unwrap_or(&"").to_string());
+            seas2.push(parts.get(32).unwrap_or(&"").to_string());
+            seas3.push(parts.get(33).unwrap_or(&"").to_string());
+            seas4.push(parts.get(34).unwrap_or(&"").to_string());
+        }
+        let df = DataFrame::new(vec![
+            Series::new("BASIN", basin),
+            Series::new("CY", cy),
+            Series::new("YYYYMMDDHH", yyyymmddhh),
+            Series::new("TECHNUM/MIN", technum_min),
+            Series::new("TECH", tech),
+            Series::new("TAU", tau),
+            Series::new("LatN/S", latn_s),
+            Series::new("LonE/W", lone_w),
+            Series::new("VMAX", vmax),
+            Series::new("MSLP", mslp),
+            Series::new("TY", ty),
+            Series::new("RAD", rad),
+            Series::new("WINDCODE", windcode),
+            Series::new("RAD1", rad1),
+            Series::new("RAD2", rad2),
+            Series::new("RAD3", rad3),
+            Series::new("RAD4", rad4),
+            Series::new("POUTER", pouter),
+            Series::new("ROUTER", router),
+            Series::new("RMW", rmw),
+            Series::new("GUSTS", gusts),
+            Series::new("EYE", eye),
+            Series::new("SUBREGION", subregion),
+            Series::new("MAXSEAS", maxseas),
+            Series::new("INITIALS", initials),
+            Series::new("DIR", dir),
+            Series::new("SPEED", speed),
+            Series::new("STORMNAME", stormname),
+            Series::new("DEPTH", depth),
+            Series::new("SEAS", seas),
+            Series::new("SEASCODE", seascode),
+            Series::new("SEAS1", seas1),
+            Series::new("SEAS2", seas2),
+            Series::new("SEAS3", seas3),
+            Series::new("SEAS4", seas4),
+        ])?;
+        Ok(df)
     }
 
     fn get_nhc_code_from_storm_name_and_year(
@@ -166,28 +265,6 @@ impl<'a> StormEventBuilder<'a> {
         let nhc_code = nhc_code.trim_matches('\"').trim().to_string();
         Ok(nhc_code)
     }
-    // fn get_storm_name_and_year_from_nhc_code(
-    //     inventory: &DataFrame,
-    //     nhc_code: &str,
-    // ) -> Result<(String, Year), StormEventBuilderError> {
-    //     let some_coll = inventory
-    //         .clone()
-    //         .lazy()
-    //         .filter(col("nhc_code").eq(lit(format!("{:>9}", nhc_code.to_uppercase()))))
-    //         .collect()?;
-    //     if some_coll.height() > 1 {
-    //         return Err(StormEventBuilderError::MultipleMatchingNhcCode(
-    //             nhc_code.to_owned(),
-    //         ));
-    //     } else if some_coll.height() == 0 {
-    //         return Err(StormEventBuilderError::NoMatchingNhcCode(
-    //             nhc_code.to_owned(),
-    //         ));
-    //     }
-    //     dbg!(some_coll);
-    //     unimplemented!();
-    //     // Ok(())
-    // }
     fn get_nhc_storm_inventory() -> Result<DataFrame, StormEventBuilderError> {
         let url = "https://ftp.nhc.noaa.gov/atcf/index/storm_list.txt";
         let response = reqwest::blocking::get(url)?.text()?;
@@ -262,11 +339,4 @@ pub enum StormEventBuilderError {
 
     #[error("{0}")]
     MutuallyExclusiveArguments(String),
-
-    // #[error("The `file_deck` field is required when requestiong realtime data.")]
-    // UninitializedFileDeckError,
-    #[error(transparent)]
-    UrlParseError(#[from] ParseError),
-    // #[error("NHCDataInventoryBuilder error: {0}")]
-    // NHCDataInventoryBuilderError(#[from] NHCDataInventoryBuilderError),
 }
