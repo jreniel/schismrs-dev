@@ -2963,6 +2963,7 @@ dependencies = [
  "clap",
  "datetime",
  "derive_builder 0.13.0",
+ "flate2",
  "polars",
  "polars-lazy",
  "regex",
