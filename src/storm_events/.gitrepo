@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:jreniel/stormeventrs.git
 	branch = main
-	commit = a85bdcac2a392f95fedcd26b62eb2ce37a5274bd
-	parent = 1842b9c283dfd55a4230b0d99319a8868633ad47
+	commit = 5964932a373813df347ee1cb46154aee1f5e824b
+	parent = f12891303d3ca34b2e084923ff428446604086e8
 	method = merge
 	cmdver = 0.4.5
