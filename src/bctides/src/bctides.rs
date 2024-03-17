@@ -1,11 +1,13 @@
+use crate::ElevationConfig;
 use chrono::{DateTime, Utc};
 use schismrs_hgrid::Hgrid;
+use std::collections::BTreeMap;
 use std::fmt;
 use thiserror::Error;
 
 #[derive(Debug)]
 pub struct Bctides<'a> {
-    hgrid: &'a Hgrid,
+    // hgrid: &'a Hgrid,
     start_date: &'a DateTime<Utc>,
     tidal_potential_cutoff_depth: &'a f64,
 }
@@ -29,16 +31,13 @@ impl fmt::Display for Bctides<'_> {
 
 #[derive(Default)]
 pub struct BctidesBuilder<'a> {
-    hgrid: Option<&'a Hgrid>,
     start_date: Option<&'a DateTime<Utc>>,
     tidal_potential_cutoff_depth: Option<&'a f64>,
+    boundary_forcing_config: Option<&'a BoundaryForcingConfig>,
 }
 
 impl<'a> BctidesBuilder<'a> {
     pub fn build(&self) -> Result<Bctides, BctidesBuilderError> {
-        let hgrid = self
-            .hgrid
-            .ok_or_else(|| BctidesBuilderError::UninitializedFieldError("hgrid".to_string()))?;
         let start_date = self.start_date.ok_or_else(|| {
             BctidesBuilderError::UninitializedFieldError("start_date".to_string())
         })?;
@@ -47,14 +46,10 @@ impl<'a> BctidesBuilder<'a> {
         })?;
         Self::validate(tidal_potential_cutoff_depth)?;
         Ok(Bctides {
-            hgrid,
+            // hgrid,
             start_date,
             tidal_potential_cutoff_depth,
         })
-    }
-    pub fn hgrid(&mut self, hgrid: &'a Hgrid) -> &mut Self {
-        self.hgrid = Some(hgrid);
-        self
     }
     pub fn start_date(&mut self, start_date: &'a DateTime<Utc>) -> &mut Self {
         self.start_date = Some(start_date);
@@ -86,4 +81,42 @@ pub enum BctidesBuilderError {
     UninitializedFieldError(String),
     #[error("tidal_potential_cutoff_depth must be >= 0.")]
     InvalidTidalPotentialCutoffDepth,
+}
+
+pub struct BoundaryForcingConfig<'a> {
+    hgrid: &'a Hgrid,
+    elevation: Option<&'a BTreeMap<u32, ElevationConfig>>,
+}
+
+pub struct BoundaryForcingConfigBuilder<'a> {
+    hgrid: Option<&'a Hgrid>,
+    elevation: Option<&'a BTreeMap<u32, ElevationConfig>>,
+}
+
+impl<'a> BoundaryForcingConfigBuilder<'a> {
+    pub fn build(&self) -> Result<BoundaryForcingConfig, BoundaryForcingConfigBuilderError> {
+        let hgrid = self.hgrid.ok_or_else(|| {
+            BoundaryForcingConfigBuilderError::UninitializedFieldError("hgrid".to_string())
+        })?;
+        Self::validate(hgrid, self.elevation)?;
+        Ok(BoundaryForcingConfig {
+            hgrid,
+            elevation: self.elevation,
+        })
+    }
+    pub fn hgrid(&mut self, hgrid: &'a Hgrid) -> &mut Self {
+        self.hgrid = Some(hgrid);
+        self
+    }
+    pub fn elevation(&mut self, elevation: &'a BTreeMap<u32, ElevationConfig>) -> &mut Self {
+        self.elevation = Some(elevation);
+        self
+    }
+}
+#[derive(Error, Debug)]
+pub enum BoundaryForcingConfigBuilderError {
+    #[error("Unitialized field on BoundaryForcingConfigBuilder: {0}")]
+    UninitializedFieldError(String),
+    // #[error("tidal_potential_cutoff_depth must be >= 0.")]
+    // InvalidTidalPotentialCutoffDepth,
 }

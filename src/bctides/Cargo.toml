@@ -8,7 +8,8 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.81"
 chrono = "0.4.35"
-clap = { version = "4.5.2", features = ["derive", "cargo"] }
+clap = { version = "4.5.3", features = ["cargo", "derive"] }
 dateparser = "0.2.1"
+getargs = "0.5.0"
 schismrs-hgrid = { version = "*",  path = "../hgrid" }
 thiserror = "1.0.57"
