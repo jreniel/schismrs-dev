@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/ingydotnet/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:jreniel/schismrs-hycom.git
+	branch = main
+	commit = 619bb196fb9275ae5719836e39dfa00453bcff60
+	parent = 73f18b0b6ea1e4b1bec75464ce6e7a12c65a0f26
+	method = merge
+	cmdver = 0.4.5
