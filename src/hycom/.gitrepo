@@ -6,7 +6,7 @@
 [subrepo]
 	remote = git@github.com:jreniel/schismrs-hycom.git
 	branch = main
-	commit = 619bb196fb9275ae5719836e39dfa00453bcff60
-	parent = 73f18b0b6ea1e4b1bec75464ce6e7a12c65a0f26
+	commit = 93bfe4313ebe5f4f1ccaf318f701f6253e4cfa0f
+	parent = 9adac009c1ddf5b1309fa3ff7a65500244918d52
 	method = merge
 	cmdver = 0.4.5
