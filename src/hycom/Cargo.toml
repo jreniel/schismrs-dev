@@ -1,0 +1,13 @@
+[package]
+name = "hycomrs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+geo-types = "0.7.13"
+netcdf = { version = "0.9.0", features = ["static"] }
+proj = "0.27.2"
+quick-xml = "0.31.0"
+regex = "1.10.3"
+reqwest = { version = "0.12.0", features = ["blocking"] }
+thiserror = "1.0.58"
