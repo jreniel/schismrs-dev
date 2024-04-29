@@ -5,4 +5,5 @@ members = [
     "src/hgrid",
     "src/storm_events",
     "src/bctides",
+    "src/hycom",
 ]
